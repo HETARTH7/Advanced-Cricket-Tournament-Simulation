@@ -14,6 +14,9 @@ class Player:
         self.fielding = fielding
         self.running = running
         self.experience = experience
+        self.runs_scored = 0
+        self.runs_given = 0
+        self.wickets_taken = 0
 
 
 class Team:
@@ -22,15 +25,17 @@ class Team:
         self.players = players
         self.captain = None
         self.batsmen = players
-        self.bowlers = players[6:]
+        self.bowlers = players[5:]
 
     def select_captain(self, captain):
         self.captain = captain
 
     def next_batsman(self, pos):
+        pos = pos % len(self.batsmen)
         return self.batsmen[pos]
 
     def next_bowler(self, pos):
+        pos = pos % len(self.bowlers)
         return self.bowlers[pos]
 
 
@@ -48,11 +53,14 @@ class Umpire:
         self.wickets = 0
         self.overs = overs
 
-    def simulate_ball(self):
+    def simulate_ball(self, bat, bowl):
         outcome = random.choice(run)
         if outcome > -1:
+            bat.runs_scored += outcome
+            bowl.runs_given += outcome
             self.score += outcome
         else:
+            bowl.wickets_taken += 1
             self.wickets += 1
         return outcome
 
@@ -70,7 +78,7 @@ class Match:
         self.team1 = team1
         self.team2 = team2
         self.field = field
-        self.umpire = Umpire(5)
+        self.umpire = Umpire(10)
         self.commentator = Commentator()
         self.stricker = None
         self.non_stricker = None
@@ -120,14 +128,16 @@ class Match:
                 if self.umpire.wickets == 10:
                     end = True
                     break
-                outcome = self.umpire.simulate_ball()
+                outcome = self.umpire.simulate_ball(self.stricker, self.bowler)
                 if outcome == -1:
-                    print(self.stricker.name+" is OUT")
+                    self.commentator.provide_commentary(
+                        self.stricker.name+" is OUT")
                     self.stricker = res['Bat'].next_batsman(
                         self.umpire.wickets+1)
 
                 else:
-                    print(self.stricker.name + " scores "+str(outcome)+" runs")
+                    self.commentator.provide_commentary(
+                        self.stricker.name + " scores "+str(outcome)+" runs")
                     if self.umpire.score >= target:
                         end = True
                         break
@@ -136,28 +146,50 @@ class Match:
                         self.stricker = self.non_stricker
                         self.non_stricker = temp
             over += 1
+            self.bowler = res['Bowl'].next_bowler(over)
             if end | over == self.umpire.overs:
-                print("Innings over")
+                self.commentator.provide_commentary("Innings over")
                 break
             temp = self.stricker
             self.stricker = self.non_stricker
             self.non_stricker = temp
-            print("Over change")
-        print("Total runs scored: "+str(self.umpire.score))
+            self.commentator.provide_commentary("Over change")
+        self.commentator.provide_commentary(
+            "Total runs scored: "+str(self.umpire.score))
         return self.umpire.score
 
     def change_innings(self, res, target):
-        print("Next innings")
+        self.commentator.provide_commentary("Next innings")
         temp = res['Bowl']
         res['Bowl'] = res['Bat']
         res['Bat'] = temp
         return self.start_match(res, target)
 
     def end_match(self, res, target, chase):
+        self.commentator.provide_commentary(
+            "What an extra ordinary match. Let's take a look at the Scoreboard")
+        self.commentator.provide_commentary(team1.name+" Batting")
+        for i in team1.batsmen:
+            self.commentator.provide_commentary(i.name+" "+str(i.runs_scored))
+        print("**********************")
+        self.commentator.provide_commentary(team1.name+" Bowling")
+        for i in team1.bowlers:
+            self.commentator.provide_commentary(
+                i.name+" "+str(i.runs_given)+" "+str(i.wickets_taken))
+        print("**********************")
+        self.commentator.provide_commentary(team2.name+" Batting")
+        for i in team2.batsmen:
+            self.commentator.provide_commentary(i.name+" "+str(i.runs_scored))
+        print("**********************")
+        self.commentator.provide_commentary(team2.name+" Bowling")
+        for i in team2.bowlers:
+            self.commentator.provide_commentary(
+                i.name+" "+str(i.runs_given)+" "+str(i.wickets_taken))
+
         if chase >= target:
-            print(res['Bat'].name+" wins")
+            self.commentator.provide_commentary(res['Bat'].name+" wins")
         else:
-            print(res['Bowl'].name+" wins")
+            self.commentator.provide_commentary(res['Bowl'].name+" wins")
 
             # Team India
 player1 = Player("Rohit Sharma", 0.8, 0.2, 0.99, 0.8, 0.9)
