@@ -72,8 +72,9 @@ class Match:
         self.field = field
         self.umpire = Umpire(5)
         self.commentator = Commentator()
-        self.batsmen = []
-        self.bowlers = []
+        self.stricker = None
+        self.non_stricker = None
+        self.bowler = None
 
     def toss_coin(self):
         self.commentator.provide_commentary(
@@ -105,35 +106,60 @@ class Match:
                 toss_res["Bowl"] = team2
         return toss_res
 
-    def start_match(self, res):
-        self.batsmen.append(res['Bat'].next_batsman(0))
-        self.batsmen.append(res['Bat'].next_batsman(1))
-        pos = 2
+    def start_match(self, res, target):
+        self.stricker = res['Bat'].next_batsman(0)
+        self.non_stricker = res['Bat'].next_batsman(1)
+        self.umpire.score = 0
+        self.umpire.wickets = 0
         over = 0
-        all_out = False
-        self.bowlers.append(res['Bowl'].next_bowler(over))
+        end = False
+
+        self.bowler = res['Bowl'].next_bowler(over)
         for i in range(self.umpire.overs):
             for j in range(6):
                 if self.umpire.wickets == 10:
-                    all_out = True
+                    end = True
                     break
                 outcome = self.umpire.simulate_ball()
                 if outcome == -1:
-                    print("OUT")
+                    print(self.stricker.name+" is OUT")
+                    self.stricker = res['Bat'].next_batsman(
+                        self.umpire.wickets+1)
+
                 else:
-                    print(outcome)
-            if all_out:
+                    print(self.stricker.name + " scores "+str(outcome)+" runs")
+                    if self.umpire.score >= target:
+                        end = True
+                        break
+                    if outcome % 2 != 0:
+                        temp = self.stricker
+                        self.stricker = self.non_stricker
+                        self.non_stricker = temp
+            over += 1
+            if end | over == self.umpire.overs:
+                print("Innings over")
                 break
-        print(self.umpire.score)
+            temp = self.stricker
+            self.stricker = self.non_stricker
+            self.non_stricker = temp
+            print("Over change")
+        print("Total runs scored: "+str(self.umpire.score))
+        return self.umpire.score
 
-    def change_innings(self):
-        pass
+    def change_innings(self, res, target):
+        print("Next innings")
+        temp = res['Bowl']
+        res['Bowl'] = res['Bat']
+        res['Bat'] = temp
+        return self.start_match(res, target)
 
-    def end_match(self):
-        pass
+    def end_match(self, res, target, chase):
+        if chase >= target:
+            print(res['Bat'].name+" wins")
+        else:
+            print(res['Bowl'].name+" wins")
 
-
-# Team India
+            # Team India
 player1 = Player("Rohit Sharma", 0.8, 0.2, 0.99, 0.8, 0.9)
 player2 = Player("Shikhar Dhawan", 0.8, 0.2, 0.99, 0.8, 0.9)
 player3 = Player("Virat Kohli", 0.8, 0.2, 0.99, 0.8, 0.9)
@@ -147,7 +173,7 @@ player10 = Player("Bhuvaneshwar Kumar", 0.8, 0.2, 0.99, 0.8, 0.9)
 player11 = Player("Yuzvendra Chahal", 0.8, 0.2, 0.99, 0.8, 0.9)
 
 # Team Australia
-player12 = Player("David Warner ", 0.8, 0.2, 0.99, 0.8, 0.9)
+player12 = Player("David Warner", 0.8, 0.2, 0.99, 0.8, 0.9)
 player13 = Player("Aaron Finch", 0.8, 0.2, 0.99, 0.8, 0.9)
 player14 = Player("Steven Smith", 0.8, 0.2, 0.99, 0.8, 0.9)
 player15 = Player("Usman Khawaja", 0.8, 0.2, 0.99, 0.8, 0.9)
@@ -171,4 +197,6 @@ field = Field("Large", 0.8, "Dry", 0.1)
 
 match = Match(team1, team2, field)
 toss_res = match.toss_coin()
-match.start_match(toss_res)
+target = match.start_match(toss_res, 99999)
+chase = match.change_innings(toss_res, target+1)
+match.end_match(toss_res, target, chase)
