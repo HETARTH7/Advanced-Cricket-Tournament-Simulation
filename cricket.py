@@ -3,6 +3,7 @@ from collections import deque
 
 toss = ["Heads", "Tails"]
 choose_to = ["Bat", "Bowl"]
+dismissals = ["Bowled", "Out by LBW", "Run-out", "Caught", "Stumped-out"]
 run = [-1, 0, 1, 2, 3, 4, 6]
 
 
@@ -17,6 +18,7 @@ class Player:
         self.runs_scored = 0
         self.runs_given = 0
         self.wickets_taken = 0
+        self.dismissal = ""
 
 
 class Team:
@@ -54,7 +56,34 @@ class Umpire:
         self.overs = overs
 
     def simulate_ball(self, bat, bowl):
-        outcome = random.choice(run)
+        batting_rating = bat.batting
+        bowling_rating = bowl.bowling
+        fielding_rating = bat.fielding
+        running_rating = bat.running
+
+        total_rating = batting_rating + bowling_rating + fielding_rating + running_rating
+
+        boundary_prob = batting_rating / total_rating
+        six_prob = boundary_prob / 6
+        four_prob = (boundary_prob - six_prob) / 4
+        three_prob = (1 - boundary_prob) / 3
+        two_prob = three_prob / 2
+        one_prob = two_prob / 2
+        zero_prob = 1 - (boundary_prob + three_prob + two_prob + one_prob)
+
+        outcome = random.random()
+
+        if outcome < boundary_prob:
+            outcome = random.choices([4, 6], weights=[four_prob, six_prob])[0]
+        elif outcome < boundary_prob + three_prob:
+            outcome = 3
+        elif outcome < boundary_prob + three_prob + two_prob:
+            outcome = 2
+        elif outcome < boundary_prob + three_prob + two_prob + one_prob:
+            outcome = 1
+        else:
+            outcome = -1
+
         if outcome > -1:
             bat.runs_scored += outcome
             bowl.runs_given += outcome
@@ -62,6 +91,7 @@ class Umpire:
         else:
             bowl.wickets_taken += 1
             self.wickets += 1
+
         return outcome
 
 
@@ -70,15 +100,16 @@ class Commentator:
         pass
 
     def provide_commentary(self, comment):
+        print("")
         print(comment)
 
 
 class Match:
-    def __init__(self, team1, team2, field):
+    def __init__(self, team1, team2, field, total_overs):
         self.team1 = team1
         self.team2 = team2
         self.field = field
-        self.umpire = Umpire(10)
+        self.umpire = Umpire(total_overs)
         self.commentator = Commentator()
         self.stricker = None
         self.non_stricker = None
@@ -130,8 +161,10 @@ class Match:
                     break
                 outcome = self.umpire.simulate_ball(self.stricker, self.bowler)
                 if outcome == -1:
+                    dismissal_type = random.choice(dismissals)
+                    self.stricker.dismissal = dismissal_type
                     self.commentator.provide_commentary(
-                        self.stricker.name+" is OUT")
+                        self.stricker.name+" is "+dismissal_type)
                     self.stricker = res['Bat'].next_batsman(
                         self.umpire.wickets+1)
 
@@ -170,7 +203,8 @@ class Match:
             "What an extra ordinary match. Let's take a look at the Scoreboard")
         self.commentator.provide_commentary(team1.name+" Batting")
         for i in team1.batsmen:
-            self.commentator.provide_commentary(i.name+" "+str(i.runs_scored))
+            self.commentator.provide_commentary(
+                i.name+" "+str(i.runs_scored)+" "+i.dismissal)
         print("**********************")
         self.commentator.provide_commentary(team1.name+" Bowling")
         for i in team1.bowlers:
@@ -179,7 +213,9 @@ class Match:
         print("**********************")
         self.commentator.provide_commentary(team2.name+" Batting")
         for i in team2.batsmen:
-            self.commentator.provide_commentary(i.name+" "+str(i.runs_scored))
+            self.commentator.provide_commentary(
+                i.name+" "+str(i.runs_scored)+" "+i.dismissal)
+
         print("**********************")
         self.commentator.provide_commentary(team2.name+" Bowling")
         for i in team2.bowlers:
@@ -191,43 +227,47 @@ class Match:
         else:
             self.commentator.provide_commentary(res['Bowl'].name+" wins")
 
-            # Team India
-player1 = Player("Rohit Sharma", 0.8, 0.2, 0.99, 0.8, 0.9)
-player2 = Player("Shikhar Dhawan", 0.8, 0.2, 0.99, 0.8, 0.9)
-player3 = Player("Virat Kohli", 0.8, 0.2, 0.99, 0.8, 0.9)
-player4 = Player("Rishabh Pant", 0.8, 0.2, 0.99, 0.8, 0.9)
-player5 = Player("MS Dhoni", 0.8, 0.2, 0.99, 0.8, 0.9)
-player6 = Player("Hardik Pandya", 0.8, 0.2, 0.99, 0.8, 0.9)
-player7 = Player("Ravindra Jadeja", 0.8, 0.2, 0.99, 0.8, 0.9)
-player8 = Player("Jasprit Bumrah", 0.8, 0.2, 0.99, 0.8, 0.9)
-player9 = Player("Kuldeep Yadav", 0.8, 0.2, 0.99, 0.8, 0.9)
-player10 = Player("Bhuvaneshwar Kumar", 0.8, 0.2, 0.99, 0.8, 0.9)
-player11 = Player("Yuzvendra Chahal", 0.8, 0.2, 0.99, 0.8, 0.9)
+
+# Team India
+player1 = Player("Rohit Sharma", 0.9, 0.2, 0.95, 0.8, 0.9)
+player2 = Player("Shikhar Dhawan", 0.85, 0.1, 0.9, 0.7, 0.85)
+player3 = Player("Virat Kohli", 0.95, 0.1, 0.9, 0.9, 0.95)
+player4 = Player("Rishabh Pant", 0.8, 0.1, 0.9, 0.7, 0.8)
+player5 = Player("MS Dhoni", 0.75, 0.1, 0.95, 0.95, 0.8)
+player6 = Player("Hardik Pandya", 0.85, 0.8, 0.9, 0.7, 0.85)
+player7 = Player("Ravindra Jadeja", 0.7, 0.9, 0.95, 0.8, 0.85)
+player8 = Player("Jasprit Bumrah", 0.1, 0.95, 0.8, 0.7, 0.9)
+player9 = Player("Kuldeep Yadav", 0.2, 0.9, 0.85, 0.6, 0.8)
+player10 = Player("Bhuvneshwar Kumar", 0.3, 0.9, 0.85, 0.6, 0.8)
+player11 = Player("Yuzvendra Chahal", 0.2, 0.9, 0.8, 0.6, 0.8)
 
 # Team Australia
-player12 = Player("David Warner", 0.8, 0.2, 0.99, 0.8, 0.9)
-player13 = Player("Aaron Finch", 0.8, 0.2, 0.99, 0.8, 0.9)
-player14 = Player("Steven Smith", 0.8, 0.2, 0.99, 0.8, 0.9)
-player15 = Player("Usman Khawaja", 0.8, 0.2, 0.99, 0.8, 0.9)
-player16 = Player("Marcus Stoinis", 0.8, 0.2, 0.99, 0.8, 0.9)
-player17 = Player("Glenn Maxwell", 0.8, 0.2, 0.99, 0.8, 0.9)
-player18 = Player("Alex Carey", 0.8, 0.2, 0.99, 0.8, 0.9)
-player19 = Player("Nathan Coulter-Nile", 0.8, 0.2, 0.99, 0.8, 0.9)
-player20 = Player("Pat Cummins", 0.8, 0.2, 0.99, 0.8, 0.9)
-player21 = Player("Mitchell Starc", 0.8, 0.2, 0.99, 0.8, 0.9)
-player22 = Player("Adam Zampa", 0.8, 0.2, 0.99, 0.8, 0.9)
+player12 = Player("David Warner", 0.9, 0.1, 0.9, 0.8, 0.9)
+player13 = Player("Aaron Finch", 0.85, 0.1, 0.9, 0.8, 0.85)
+player14 = Player("Steven Smith", 0.95, 0.2, 0.9, 0.9, 0.95)
+player15 = Player("Usman Khawaja", 0.8, 0.1, 0.9, 0.7, 0.8)
+player16 = Player("Marcus Stoinis", 0.85, 0.2, 0.85, 0.7, 0.85)
+player17 = Player("Glenn Maxwell", 0.8, 0.3, 0.9, 0.8, 0.85)
+player18 = Player("Alex Carey", 0.75, 0.1, 0.9, 0.7, 0.8)
+player19 = Player("Nathan Coulter-Nile", 0.7, 0.2, 0.8, 0.7, 0.75)
+player20 = Player("Pat Cummins", 0.8, 0.3, 0.85, 0.8, 0.85)
+player21 = Player("Mitchell Starc", 0.9, 0.4, 0.9, 0.8, 0.9)
+player22 = Player("Adam Zampa", 0.7, 0.9, 0.85, 0.7, 0.8)
+
 team1 = Team("India", [player1, player2, player3, player4, player5,
-             player6, player7, player8, player9, player10, player11])
+                       player6, player7, player8, player9, player10, player11])
 team1.select_captain(player5)
 
 team2 = Team("Australia", [player12, player13, player14, player15, player16,
-             player17, player18, player19, player20, player21, player22])
+                           player17, player18, player19, player20, player21, player22])
 team2.select_captain(player13)
-
 
 field = Field("Large", 0.8, "Dry", 0.1)
 
-match = Match(team1, team2, field)
+print("")
+print("ADVANCED CRICKET SIMULATION")
+
+match = Match(team1, team2, field, 5)
 toss_res = match.toss_coin()
 target = match.start_match(toss_res, 99999)
 chase = match.change_innings(toss_res, target+1)
