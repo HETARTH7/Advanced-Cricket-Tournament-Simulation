@@ -9,6 +9,7 @@ run = [-1, 0, 1, 2, 3, 4, 6]
 
 class Player:
     def __init__(self, name, batting, bowling, fielding, running, experience):
+        # Initialize player
         self.name = name
         self.batting = batting
         self.bowling = bowling
@@ -23,6 +24,7 @@ class Player:
 
 class Team:
     def __init__(self, name, players):
+        # Initialize team
         self.name = name
         self.players = players
         self.captain = None
@@ -30,19 +32,23 @@ class Team:
         self.bowlers = players[5:]
 
     def select_captain(self, captain):
+        # Choose team captain
         self.captain = captain
 
     def next_batsman(self, pos):
+        # Return next batsman from batting line-up
         pos = pos % len(self.batsmen)
         return self.batsmen[pos]
 
     def next_bowler(self, pos):
+        # Return next bowler from bowling line-up
         pos = pos % len(self.bowlers)
         return self.bowlers[pos]
 
 
 class Field:
     def __init__(self, size, fan_ratio, pitch_conditions, home_advantage):
+        # Initialize field conditions
         self.size = size
         self.fan_ratio = fan_ratio
         self.pitch_conditions = pitch_conditions
@@ -51,11 +57,13 @@ class Field:
 
 class Umpire:
     def __init__(self, overs):
+        # Initialize match data
         self.score = 0
         self.wickets = 0
         self.overs = overs
 
     def simulate_ball(self, bat, bowl):
+        # Get the result of each bowl based on probeblity of outcomes calculated using the batting and bowling ratings of the sticker and bowler respectively
         batting_rating = bat.batting
         bowling_rating = bowl.bowling
         fielding_rating = bat.fielding
@@ -97,15 +105,18 @@ class Umpire:
 
 class Commentator:
     def __init__(self):
+        # Initialize the commentator
         pass
 
     def provide_commentary(self, comment):
+        # Print the events of the match as commentory
         print("")
         print(comment)
 
 
 class Match:
     def __init__(self, team1, team2, field, total_overs):
+        # Initialize the match
         self.team1 = team1
         self.team2 = team2
         self.field = field
@@ -116,6 +127,7 @@ class Match:
         self.bowler = None
 
     def toss_coin(self):
+        # Perform coin toss and assign batting / bowling role to teams
         self.commentator.provide_commentary(
             "What a beautiful day today! It's a "+field.size+" & "+field.pitch_conditions+" field. Both captains walking into the field for the toss.")
         call = random.choice(toss)
@@ -125,6 +137,7 @@ class Match:
         self.commentator.provide_commentary("And it's "+coin_outcome)
         choose = random.choice(choose_to)
         toss_res = {}
+        # Assign batting / bowling roles based on toss result
         if call == coin_outcome:
             self.commentator.provide_commentary(
                 team1.name+" wins the toss. " + team1.captain.name+" chooses to "+choose)
@@ -146,6 +159,7 @@ class Match:
         return toss_res
 
     def start_match(self, res, target):
+        # Simulate a single inning
         self.stricker = res['Bat'].next_batsman(0)
         self.non_stricker = res['Bat'].next_batsman(1)
         self.umpire.score = 0
@@ -178,9 +192,11 @@ class Match:
                         temp = self.stricker
                         self.stricker = self.non_stricker
                         self.non_stricker = temp
+            # Change over, bowler by next bowler and rotate strike
             over += 1
             self.bowler = res['Bowl'].next_bowler(over)
             if end | over == self.umpire.overs:
+                # Terminate the innings in case of reaching maximum overs / all-out
                 self.commentator.provide_commentary("Innings over")
                 break
             temp = self.stricker
@@ -192,13 +208,16 @@ class Match:
         return self.umpire.score
 
     def change_innings(self, res, target):
+        #  Switch roles after the first inning ends
         self.commentator.provide_commentary("Next innings")
         temp = res['Bowl']
         res['Bowl'] = res['Bat']
         res['Bat'] = temp
+        # Restart the match
         return self.start_match(res, target)
 
     def end_match(self, res, target, chase):
+        # Match complete and display the scoreboard and result
         self.commentator.provide_commentary(
             "What an extra ordinary match. Let's take a look at the Scoreboard")
         self.commentator.provide_commentary(team1.name+" Batting")
